@@ -17,15 +17,15 @@ from datetime import datetime, date, timedelta
 DB_PATH = Path.home() / ".claude" / "usage.db"
 
 PRICING = {
-    "claude-opus-4-7":   {"input":  5.00, "output": 25.00},
-    "claude-opus-4-6":   {"input":  5.00, "output": 25.00},
-    "claude-opus-4-5":   {"input":  5.00, "output": 25.00},
-    "claude-sonnet-4-7": {"input":  3.00, "output": 15.00},
-    "claude-sonnet-4-6": {"input":  3.00, "output": 15.00},
-    "claude-sonnet-4-5": {"input":  3.00, "output": 15.00},
-    "claude-haiku-4-7":  {"input":  1.00, "output":  5.00},
-    "claude-haiku-4-6":  {"input":  1.00, "output":  5.00},
-    "claude-haiku-4-5":  {"input":  1.00, "output":  5.00},
+    "claude-opus-4-7":   {"input": 5.00, "output": 25.00, "cache_read": 0.50, "cache_write": 6.25},
+    "claude-opus-4-6":   {"input": 5.00, "output": 25.00, "cache_read": 0.50, "cache_write": 6.25},
+    "claude-opus-4-5":   {"input": 5.00, "output": 25.00, "cache_read": 0.50, "cache_write": 6.25},
+    "claude-sonnet-4-7": {"input": 3.00, "output": 15.00, "cache_read": 0.30, "cache_write": 3.75},
+    "claude-sonnet-4-6": {"input": 3.00, "output": 15.00, "cache_read": 0.30, "cache_write": 3.75},
+    "claude-sonnet-4-5": {"input": 3.00, "output": 15.00, "cache_read": 0.30, "cache_write": 3.75},
+    "claude-haiku-4-7":  {"input": 1.00, "output":  5.00, "cache_read": 0.10, "cache_write": 1.25},
+    "claude-haiku-4-6":  {"input": 1.00, "output":  5.00, "cache_read": 0.10, "cache_write": 1.25},
+    "claude-haiku-4-5":  {"input": 1.00, "output":  5.00, "cache_read": 0.10, "cache_write": 1.25},
 }
 
 def get_pricing(model):
@@ -51,10 +51,10 @@ def calc_cost(model, inp, out, cache_read, cache_creation):
     if not p:
         return 0.0
     return (
-        inp          * p["input"]  / 1_000_000 +
-        out          * p["output"] / 1_000_000 +
-        cache_read   * p["input"]  * 0.10 / 1_000_000 +
-        cache_creation * p["input"] * 1.25 / 1_000_000
+        inp            * p["input"]       / 1_000_000 +
+        out            * p["output"]      / 1_000_000 +
+        cache_read     * p["cache_read"]  / 1_000_000 +
+        cache_creation * p["cache_write"] / 1_000_000
     )
 
 def fmt(n):
@@ -297,14 +297,12 @@ def cmd_stats():
     daily_avg = conn.execute("""
         SELECT
             AVG(daily_inp) as avg_inp,
-            AVG(daily_out) as avg_out,
-            AVG(daily_cost) as avg_cost
+            AVG(daily_out) as avg_out
         FROM (
             SELECT
                 substr(timestamp, 1, 10) as day,
                 SUM(input_tokens) as daily_inp,
-                SUM(output_tokens) as daily_out,
-                0.0 as daily_cost
+                SUM(output_tokens) as daily_out
             FROM turns
             WHERE timestamp >= datetime('now', '-30 days')
             GROUP BY day
